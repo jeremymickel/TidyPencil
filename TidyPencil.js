@@ -9,7 +9,7 @@
 + Tollerance for straight bits?
 + Set controle points to smooth for editing?
 + First (second) controlepoint handle-in needs to be set properly
-+ What if point sit on top of each-other
++ Draw close contours tickbox
 
 *////////////////////////////////////////
 
@@ -74,9 +74,11 @@ function onMouseDrag(event) {
 
 function onMouseUp(event) {
     mousePath.add(event.point); //endpoint
+    //draw closed contour if enpoint is close to startpoint?
     mousePath.strokeColor = '050505';
     tempPath = mousePath.clone();
-    //tempPath.strokeColor = '#00E7FF';
+    tempPath.strokeColor = '#00E7FF';
+    removeStackedPoints(tempPath);
     simplefy(tempPath);
     tempPath.remove();
     mousePath.remove();
@@ -88,7 +90,7 @@ function log(x){
     console.log(x);
 }
 function drawline(start,end){
-	var line = new Path();
+    var line = new Path();
     line.strokeColor = '#32FF00';
     line.add(start);
     line.add(end);
@@ -103,8 +105,6 @@ function simplefy(thisPath){
         len = thisPath.segments.length,
         dirX = 1,                           //direction X
         dirY = 1;                           //direction Y
-    
-   
 
     if (len >= 3){
         for(var i = len-1; i>=0; i--){
@@ -125,10 +125,10 @@ function simplefy(thisPath){
                     dirY = switchDirection(diffY,dirY);
                 }
             } else {
-            	var ns = ts.next;			//next segment
-            	var nextX = ns.point.x,
+                var ns = ts.next;           //next segment
+                var nextX = ns.point.x,
                     nextY = ns.point.y;
-            	diffX = nextX-thisX;
+                diffX = nextX-thisX;
                 diffY = nextY-thisY;
             }
             //compare points
@@ -183,21 +183,44 @@ function simplefy(thisPath){
     calcSimplePath(cp,pp);
 }
 
+function removeStackedPoints(thisPath){
+    var len = thisPath.segments.length;
+    var threshold = 1;
+    for(var i = len-1; i>=0; i--){
+        //this segment
+        var ts = thisPath.segments[i];
+        if(ts.point != thisPath.segments.first.point){
+            var ps = ts.previous;       // previous segment
+            //compare points
+            var difference = ps.point-ts.point;
+            log("Difference"+difference);
+            if( difference.x <= threshold && difference.y <= threshold && difference.x >= -threshold && difference.y >= -threshold ){
+                ps.remove();
+                //log("removed point: "+ps.point);
+                return removeStackedPoints(thisPath);
+            } else {
+                //log("keep point: "+ps.point);
+            }
+        }
+    }
+    return thisPath;
+}
+
 function calcSimplePath(cp,pp){
-	var simplePath = new Path();
-	
+    var simplePath = new Path();
+    
     var cplen = cp.length,              //controle points
         pplen = pp.length;              //path points
     if(pplen <= 2){
-    	log("This is one of the bugs!");
+        log("This is one of the bugs!");
     }
     // insert controlepoints to array
     for(var i = pplen-2; i >= 1; i--){
-        var prevp = pp[i-1],			//previous point
-            thisp = pp[i],				//this point
-            nextp = pp[i+1],			//next point
-            prevc = null,				//previous controle
-            nextc = null;				//next controle
+        var prevp = pp[i-1],            //previous point
+            thisp = pp[i],              //this point
+            nextp = pp[i+1],            //next point
+            prevc = null,               //previous controle
+            nextc = null;               //next controle
             
         //get prev controle point
         if (prevp.pos != thisp.pos-1){ /////////!!! DUHUH the first one is not set yet ///////////////////////////////////////////////////////
@@ -211,102 +234,102 @@ function calcSimplePath(cp,pp){
         // find angle for controle points
         var p0 = null,p2 = null;
         if(prevc != null) {
-        	var p0 = new Point(prevc.x, prevc.y);
+            var p0 = new Point(prevc.x, prevc.y);
         } else {
-        	var p0 = new Point(prevp.x, prevp.y);
+            var p0 = new Point(prevp.x, prevp.y);
         }
         if(nextc != null) {
-        	p2 = new Point(nextc.x, nextc.y);
+            p2 = new Point(nextc.x, nextc.y);
         } else {
-        	p2 = new Point(nextp.x, nextp.y);
+            p2 = new Point(nextp.x, nextp.y);
         }
-        var dirV = p2 - p0, 				//direction vector
-        	ang = Math.abs(dirV.angle);
+        var dirV = p2 - p0,                 //direction vector
+            ang = Math.abs(dirV.angle);
 
         if(ang >= 45 && ang <= 135 || ang >= 225 && ang <= 315){
-        	var horz = false;
+            var horz = false;
         } else {
-        	var horz = true;
+            var horz = true;
         }
         if(horz == true){
-        	//set handles horizontal
-        	if(prevc != null){
-        		thisp.outx = prevc.x;
-        	} else {
-        		thisp.outx = (thisp.x - prevp.x)/3;
-        	}
-			if(nextc != null){
-        		thisp.inx = nextc.x;
-        	} else {
-        		thisp.inx = (nextp.x - thisp.x)/3;
-        	}
-        	thisp.iny = thisp.y;        	
-        	thisp.outy = thisp.y;
+            //set handles horizontal
+            if(prevc != null){
+                thisp.outx = prevc.x;
+            } else {
+                thisp.outx = (thisp.x - prevp.x)/3;
+            }
+            if(nextc != null){
+                thisp.inx = nextc.x;
+            } else {
+                thisp.inx = (nextp.x - thisp.x)/3;
+            }
+            thisp.iny = thisp.y;            
+            thisp.outy = thisp.y;
         } else {
-        	//horz == false //set handles vertical
-        	if(prevc != null){
-        		thisp.outy = prevc.y;
-        	} else {
-        		thisp.outy = (thisp.y - prevp.y)/3;
-        	}
-        	if(nextc != null){
-        		thisp.iny = nextc.y;
-        	} else {
-        		thisp.iny = (nextp.y-thisp.y)/3;
-        	}
-        	thisp.inx = thisp.x;
-        	thisp.outx = thisp.x;
+            //horz == false //set handles vertical
+            if(prevc != null){
+                thisp.outy = prevc.y;
+            } else {
+                thisp.outy = (thisp.y - prevp.y)/3;
+            }
+            if(nextc != null){
+                thisp.iny = nextc.y;
+            } else {
+                thisp.iny = (nextp.y-thisp.y)/3;
+            }
+            thisp.inx = thisp.x;
+            thisp.outx = thisp.x;
         }
     }
     
     ////////////////// END POINT /////////////////////////
-    var prevp = pp[1],				//previous point
-    	thisp = pp[0],				//this point (first)
-    	prevc = null;				//previous controle
+    var prevp = pp[1],              //previous point
+        thisp = pp[0],              //this point (first)
+        prevc = null;               //previous controle
 
     //create vector
     var sp = new Point(thisp.x,thisp.y),
-    	ep = new Point(prevp.outx,prevp.outy),
-    	dirV = ep - sp;
+        ep = new Point(prevp.outx,prevp.outy),
+        dirV = ep - sp;
     
     dirV /=2.5;
     var np = sp + dirV;
-	thisp.inx = np.x;
-	thisp.iny = np.y;
-	thisp.outx = thisp.x;
-	thisp.outy = thisp.y;
-	
+    thisp.inx = np.x;
+    thisp.iny = np.y;
+    thisp.outx = thisp.x;
+    thisp.outy = thisp.y;
+    
     ////////////////// START POINT /////////////////////////
-    var nextp = pp[pp.length-2],				//next point
-    	thisp = pp[pp.length-1],				//this point (first)
-    	nextc = null;							//next controle
+    var nextp = pp[pp.length-2],                //next point
+        thisp = pp[pp.length-1],                //this point (first)
+        nextc = null;                           //next controle
 
     //create vector
-    var sp = new Point(thisp.x,thisp.y);		//start point
-    var ep = new Point(nextp.inx,nextp.iny);	//end point
+    var sp = new Point(thisp.x,thisp.y);        //start point
+    var ep = new Point(nextp.inx,nextp.iny);    //end point
     var dirV = ep - sp;
     dirV /=2.5;
     var np = sp + dirV;
-	thisp.outx = np.x;
-	thisp.outy = np.y;
-	thisp.inx = thisp.x;
-	thisp.iny = thisp.y;
-	
-	//let’s draw it!    
+    thisp.outx = np.x;
+    thisp.outy = np.y;
+    thisp.inx = thisp.x;
+    thisp.iny = thisp.y;
+    
+    //let’s draw it!    
     drawSimplePath(pp);
 }
 
 function drawSimplePath(pp) {
-	var simplePath = new Path();
-	
-	simplePath.strokeColor = 'FC03F0';
-	
-	var len = pp.length;
-	for(var i = len-1; i >= 0; i--){
-		var tp = pp[i];
-		var thisSegment = new Segment(tp.x, tp.y, tp.inx-tp.x, tp.iny-tp.y, tp.outx-tp.x,tp.outy-tp.y);
-		simplePath.add(thisSegment);
-	}
+    var simplePath = new Path();
+    
+    simplePath.strokeColor = 'FC03F0';
+    
+    var len = pp.length;
+    for(var i = len-1; i >= 0; i--){
+        var tp = pp[i];
+        var thisSegment = new Segment(tp.x, tp.y, tp.inx-tp.x, tp.iny-tp.y, tp.outx-tp.x,tp.outy-tp.y);
+        simplePath.add(thisSegment);
+    }
 }
 
 function getCP(cp,x){

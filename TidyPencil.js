@@ -77,7 +77,6 @@ function onMouseUp(event) {
     //draw closed contour if enpoint is close to startpoint?
     mousePath.strokeColor = '050505';
     tempPath = mousePath.clone();
-    tempPath.strokeColor = '#00E7FF';
     removeStackedPoints(tempPath);
     simplefy(tempPath);
     tempPath.remove();
@@ -106,7 +105,7 @@ function simplefy(thisPath){
         dirX = 1,                           //direction X
         dirY = 1;                           //direction Y
 
-    if (len >= 3){
+    if (len > 2){
         for(var i = len-1; i>=0; i--){
             //reference points
             var ts = thisPath.segments[i];  //this segment
@@ -175,8 +174,6 @@ function simplefy(thisPath){
                 dp = [];
             }
         }   
-    } else {
-        log("SIMPLIFY PATH: deal with two point paths");
     }
     thisPath.remove();
     calcSimplePath(cp,pp);

@@ -132,7 +132,6 @@ function simplefy(thisPath){
                 diffY = nextY-thisY;
             }
             //compare points
-            //if(samesign(diffX,dirX) == true && samesign(diffY,dirY) == true && ts.point != thisPath.segments.last.point && ts.point != thisPath.segments.first.point){
             if( ( (Math.abs(diffX) < 1 || Math.abs(diffY) < 1) || (samesign(diffX,dirX) && samesign(diffY,dirY)) ) && ts.point != thisPath.segments.last.point && ts.point != thisPath.segments.first.point ){
                 //delete
                 var pointObj = {x:ts.point.x,y:ts.point.y,l:0};
@@ -193,13 +192,9 @@ function removeStackedPoints(thisPath){
             var ps = ts.previous;       // previous segment
             //compare points
             var difference = ps.point-ts.point;
-            log("Difference"+difference);
             if( difference.x <= threshold && difference.y <= threshold && difference.x >= -threshold && difference.y >= -threshold ){
                 ps.remove();
-                //log("removed point: "+ps.point);
                 return removeStackedPoints(thisPath);
-            } else {
-                //log("keep point: "+ps.point);
             }
         }
     }
@@ -212,109 +207,129 @@ function calcSimplePath(cp,pp){
     var cplen = cp.length,              //controle points
         pplen = pp.length;              //path points
     if(pplen <= 2){
-        log("This is one of the bugs!");
-    }
-    // insert controlepoints to array
-    for(var i = pplen-2; i >= 1; i--){
-        var prevp = pp[i-1],            //previous point
-            thisp = pp[i],              //this point
-            nextp = pp[i+1],            //next point
-            prevc = null,               //previous controle
-            nextc = null;               //next controle
-            
-        //get prev controle point
-        if (prevp.pos != thisp.pos-1){ /////////!!! DUHUH the first one is not set yet ///////////////////////////////////////////////////////
-            prevc = getCP(cp,thisp.pos);
+        if(cplen == 0){ //make it a line
+            for(var i=pplen-1; i >= 0; i--){
+                pp[i].outx = pp[i].x;
+                pp[i].inx = pp[i].x;
+                pp[i].outy = pp[i].y;
+                pp[i].iny = pp[i].y;
+            }
+        } else { //make it a curve
+            //do first point
+            pp[1].outx = pp[1].x+(cp[0].x-pp[1].x)/3;
+            pp[1].outy = pp[1].y+(cp[0].y-pp[1].y)/3;
+            pp[1].inx = pp[1].x;
+            pp[1].iny = pp[1].y;
+            //do last point
+            pp[0].outx = pp[0].x;
+            pp[0].outy = pp[0].y;
+            pp[0].inx = pp[0].x+(cp[0].x-pp[0].x)/3;
+            pp[0].iny = pp[0].y+(cp[0].y-pp[0].y)/3;
+
         }
-        //get next controle point
-        if (thisp.pos != nextp.pos-1){
-            nextc = getCP(cp,nextp.pos);
+    } else {
+        // insert controlepoints to array
+        for(var i = pplen-2; i >= 1; i--){
+            var prevp = pp[i-1],            //previous point
+                thisp = pp[i],              //this point
+                nextp = pp[i+1],            //next point
+                prevc = null,               //previous controle
+                nextc = null;               //next controle
+                
+            //get prev controle point
+            if (prevp.pos != thisp.pos-1){ /////////!!! DUHUH the first one is not set yet ///////////////////////////////////////////////////////
+                prevc = getCP(cp,thisp.pos);
+            }
+            //get next controle point
+            if (thisp.pos != nextp.pos-1){
+                nextc = getCP(cp,nextp.pos);
+            }
+            
+            // find angle for controle points
+            var p0 = null,p2 = null;
+            if(prevc != null) {
+                var p0 = new Point(prevc.x, prevc.y);
+            } else {
+                var p0 = new Point(prevp.x, prevp.y);
+            }
+            if(nextc != null) {
+                p2 = new Point(nextc.x, nextc.y);
+            } else {
+                p2 = new Point(nextp.x, nextp.y);
+            }
+            var dirV = p2 - p0,                 //direction vector
+                ang = Math.abs(dirV.angle);
+
+            if(ang >= 45 && ang <= 135 || ang >= 225 && ang <= 315){
+                var horz = false;
+            } else {
+                var horz = true;
+            }
+            if(horz == true){
+                //set handles horizontal
+                if(prevc != null){
+                    thisp.outx = prevc.x;
+                } else {
+                    thisp.outx = (thisp.x - prevp.x)/3;
+                }
+                if(nextc != null){
+                    thisp.inx = nextc.x;
+                } else {
+                    thisp.inx = (nextp.x - thisp.x)/3;
+                }
+                thisp.iny = thisp.y;            
+                thisp.outy = thisp.y;
+            } else {
+                //horz == false //set handles vertical
+                if(prevc != null){
+                    thisp.outy = prevc.y;
+                } else {
+                    thisp.outy = (thisp.y - prevp.y)/3;
+                }
+                if(nextc != null){
+                    thisp.iny = nextc.y;
+                } else {
+                    thisp.iny = (nextp.y-thisp.y)/3;
+                }
+                thisp.inx = thisp.x;
+                thisp.outx = thisp.x;
+            }
         }
         
-        // find angle for controle points
-        var p0 = null,p2 = null;
-        if(prevc != null) {
-            var p0 = new Point(prevc.x, prevc.y);
-        } else {
-            var p0 = new Point(prevp.x, prevp.y);
-        }
-        if(nextc != null) {
-            p2 = new Point(nextc.x, nextc.y);
-        } else {
-            p2 = new Point(nextp.x, nextp.y);
-        }
-        var dirV = p2 - p0,                 //direction vector
-            ang = Math.abs(dirV.angle);
+        ////////////////// END POINT /////////////////////////
+        var prevp = pp[1],              //previous point
+            thisp = pp[0],              //this point (first)
+            prevc = null;               //previous controle
 
-        if(ang >= 45 && ang <= 135 || ang >= 225 && ang <= 315){
-            var horz = false;
-        } else {
-            var horz = true;
-        }
-        if(horz == true){
-            //set handles horizontal
-            if(prevc != null){
-                thisp.outx = prevc.x;
-            } else {
-                thisp.outx = (thisp.x - prevp.x)/3;
-            }
-            if(nextc != null){
-                thisp.inx = nextc.x;
-            } else {
-                thisp.inx = (nextp.x - thisp.x)/3;
-            }
-            thisp.iny = thisp.y;            
-            thisp.outy = thisp.y;
-        } else {
-            //horz == false //set handles vertical
-            if(prevc != null){
-                thisp.outy = prevc.y;
-            } else {
-                thisp.outy = (thisp.y - prevp.y)/3;
-            }
-            if(nextc != null){
-                thisp.iny = nextc.y;
-            } else {
-                thisp.iny = (nextp.y-thisp.y)/3;
-            }
-            thisp.inx = thisp.x;
-            thisp.outx = thisp.x;
-        }
+        //create vector
+        var sp = new Point(thisp.x,thisp.y),
+            ep = new Point(prevp.outx,prevp.outy),
+            dirV = ep - sp;
+        
+        dirV /=2.5;
+        var np = sp + dirV;
+        thisp.inx = np.x;
+        thisp.iny = np.y;
+        thisp.outx = thisp.x;
+        thisp.outy = thisp.y;
+        
+        ////////////////// START POINT /////////////////////////
+        var nextp = pp[pp.length-2],                //next point
+            thisp = pp[pp.length-1],                //this point (first)
+            nextc = null;                           //next controle
+
+        //create vector
+        var sp = new Point(thisp.x,thisp.y);        //start point
+        var ep = new Point(nextp.inx,nextp.iny);    //end point
+        var dirV = ep - sp;
+        dirV /=2.5;
+        var np = sp + dirV;
+        thisp.outx = np.x;
+        thisp.outy = np.y;
+        thisp.inx = thisp.x;
+        thisp.iny = thisp.y;
+
     }
-    
-    ////////////////// END POINT /////////////////////////
-    var prevp = pp[1],              //previous point
-        thisp = pp[0],              //this point (first)
-        prevc = null;               //previous controle
-
-    //create vector
-    var sp = new Point(thisp.x,thisp.y),
-        ep = new Point(prevp.outx,prevp.outy),
-        dirV = ep - sp;
-    
-    dirV /=2.5;
-    var np = sp + dirV;
-    thisp.inx = np.x;
-    thisp.iny = np.y;
-    thisp.outx = thisp.x;
-    thisp.outy = thisp.y;
-    
-    ////////////////// START POINT /////////////////////////
-    var nextp = pp[pp.length-2],                //next point
-        thisp = pp[pp.length-1],                //this point (first)
-        nextc = null;                           //next controle
-
-    //create vector
-    var sp = new Point(thisp.x,thisp.y);        //start point
-    var ep = new Point(nextp.inx,nextp.iny);    //end point
-    var dirV = ep - sp;
-    dirV /=2.5;
-    var np = sp + dirV;
-    thisp.outx = np.x;
-    thisp.outy = np.y;
-    thisp.inx = thisp.x;
-    thisp.iny = thisp.y;
-    
     //let’s draw it!    
     drawSimplePath(pp);
 }

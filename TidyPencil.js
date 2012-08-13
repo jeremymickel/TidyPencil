@@ -234,7 +234,7 @@ function calcSimplePath(cp,pp){
                 nextc = null;               //next controle
                 
             //get prev controle point
-            if (prevp.pos != thisp.pos-1){ /////////!!! DUHUH the first one is not set yet ///////////////////////////////////////////////////////
+            if (prevp.pos != thisp.pos-1){
                 prevc = getCP(cp,thisp.pos);
             }
             //get next controle point
@@ -244,6 +244,7 @@ function calcSimplePath(cp,pp){
             
             // find angle for controle points
             var p0 = null,p2 = null;
+
             if(prevc != null) {
                 var p0 = new Point(prevc.x, prevc.y);
             } else {
@@ -254,6 +255,7 @@ function calcSimplePath(cp,pp){
             } else {
                 p2 = new Point(nextp.x, nextp.y);
             }
+            
             var dirV = p2 - p0,                 //direction vector
                 ang = Math.abs(dirV.angle);
 
@@ -267,12 +269,14 @@ function calcSimplePath(cp,pp){
                 if(prevc != null){
                     thisp.outx = prevc.x;
                 } else {
-                    thisp.outx = (thisp.x - prevp.x)/3;
+                    thisp.outx = (prevp.x - thisp.x)/3;
+                    thisp.outx += thisp.x;
                 }
                 if(nextc != null){
                     thisp.inx = nextc.x;
                 } else {
                     thisp.inx = (nextp.x - thisp.x)/3;
+                    thisp.inx += thisp.x;
                 }
                 thisp.iny = thisp.y;            
                 thisp.outy = thisp.y;
@@ -281,12 +285,14 @@ function calcSimplePath(cp,pp){
                 if(prevc != null){
                     thisp.outy = prevc.y;
                 } else {
-                    thisp.outy = (thisp.y - prevp.y)/3;
+                    thisp.outy = (prevp.y - thisp.y)/3;
+                    thisp.outy += thisp.y;
                 }
                 if(nextc != null){
                     thisp.iny = nextc.y;
                 } else {
-                    thisp.iny = (nextp.y-thisp.y)/3;
+                    thisp.iny = (nextp.y - thisp.y)/3;
+                    thisp.iny += thisp.y;
                 }
                 thisp.inx = thisp.x;
                 thisp.outx = thisp.x;

@@ -79,8 +79,8 @@ function onMouseUp(event) {
     tempPath = mousePath.clone();
     removeStackedPoints(tempPath);
     simplefy(tempPath);
-    tempPath.remove();
-    mousePath.remove();
+    //tempPath.remove();
+    //mousePath.remove();
 }
 //-------------(END MOUSE EVENTS)
 
@@ -155,7 +155,7 @@ function simplefy(thisPath){
                             smallest = dp[j];
                         }
                     }
-                    //var myCircle = new Path.Circle(new Point(smallest.x, smallest.y), 3); //temp visual
+                    var myCircle = new Path.Circle(new Point(smallest.x, smallest.y), 3); //temp visual
                     
                     //save this point as controle point
                     var pointObj = {x:smallest.x,y:smallest.y,pos:i,inx:0,iny:0,outx:0,outy:0};
@@ -242,28 +242,53 @@ function calcSimplePath(cp,pp){
                 nextc = getCP(cp,nextp.pos);
             }
             
-            // find angle for controle points
+            // find angle for controle points     
             var p0 = null,p2 = null;
 
-            if(prevc != null) {
-                var p0 = new Point(prevc.x, prevc.y);
+            if(prevc != null) {                             
+                p0 = new Point(prevc.x, prevc.y);               
             } else {
-                var p0 = new Point(prevp.x, prevp.y);
+                p0 = new Point(prevp.x, prevp.y);
             }
             if(nextc != null) {
                 p2 = new Point(nextc.x, nextc.y);
             } else {
                 p2 = new Point(nextp.x, nextp.y);
             }
-            
-            var dirV = p2 - p0,                 //direction vector
+
+            //difference between this point and the next
+            var prefdiffX = thisp.x-prevp.x,
+                prefdiffY = thisp.y-prevp.y,
+                nextdiffX = thisp.x-nextp.x,
+                nextdiffY = thisp.y-nextp.y,
+                horz;
+
+            if( (prefdiffX < 0 && nextdiffX < 0) || (prefdiffX > 0 && nextdiffX > 0) ){
+                //check if they hang in the same corner (+)
+                if( (prefdiffY < 0 && nextdiffY < 0) || (prefdiffY > 0 && nextdiffY > 0) ){
+                    //handles vertical
+                    horz = true;
+                } else {
+                    //handles horizontal
+                    horz = false;   
+                }
+
+            } else if ( (prefdiffY < 0 && nextdiffY < 0) || (prefdiffY > 0 && nextdiffY > 0) ){
+                //handles vertical
+                horz = true;
+
+            } else {
+                //handles are in opposite corners (x)
+                var dirV = nextp - prevp,
                 ang = Math.abs(dirV.angle);
 
-            if(ang >= 45 && ang <= 135 || ang >= 225 && ang <= 315){
-                var horz = false;
-            } else {
-                var horz = true;
+                if(ang >= 45 && ang <= 135 || ang >= 225 && ang <= 315){   
+                    var horz = false;
+                } else {
+                    var horz = true;
+                }      
             }
+
             if(horz == true){
                 //set handles horizontal
                 if(prevc != null){
@@ -337,6 +362,48 @@ function calcSimplePath(cp,pp){
     drawSimplePath(pp);
 }
 
+function fixDirectionHandles(thisPath){
+    //this is a temporary function to fix direction handles
+    //I am still working on proper path math for drawing curves trough points
+    //So this is just a quickfix
+    var len = thisPath.segments.length;
+    if (len > 2){
+        for(var i = len-1; i>=0; i--){
+            //this segment
+            var ts = thisPath.segments[i];
+            if( (ts.point != thisPath.segments.first.point) && (ts.point != thisPath.segments.last.point) ){
+                var hIn = ts.handleIn, hOut = ts.handleOut;
+                //do Y
+                if(hIn.y != 0 && hOut.y != 0){
+                    if( samesign(hIn.y,hOut.y) ){
+                        //fix this
+                        //log("Segment "+i+" INY: "+hIn.y+" OUTY:"+hOut.y);
+                        if(hOut.y < 0){
+                            hIn.y = Math.abs(hIn.y);
+                        } else {
+                            hIn.y = -hIn.y
+                        }
+                    }
+                }
+                //do X
+                if(hIn.x != 0 && hOut.x != 0){
+                    if( samesign(hIn.x,hOut.x) ){
+                        //fixthis
+                        //log("Segment "+i+" INX: "+hIn.x+" OUTX:"+hOut.x);
+                        if(hOut.x < 0){
+                            hIn.x = Math.abs(hIn.x);
+                        } else {
+                            hIn.x = -hIn.x
+                        }
+                    }
+                }
+            }
+        }
+    } else {
+        //no problem
+    }
+}
+
 function drawSimplePath(pp) {
     var simplePath = new Path();
     
@@ -348,6 +415,8 @@ function drawSimplePath(pp) {
         var thisSegment = new Segment(tp.x, tp.y, tp.inx-tp.x, tp.iny-tp.y, tp.outx-tp.x,tp.outy-tp.y);
         simplePath.add(thisSegment);
     }
+    //TEMP QUICK FIX HANDLES
+    fixDirectionHandles(simplePath);
 }
 
 function getCP(cp,x){
